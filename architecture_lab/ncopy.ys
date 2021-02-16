@@ -1,0 +1,213 @@
+#/* $begin ncopy-ys */
+##################################################################
+# ncopy.ys - Copy a src block of len words to dst.
+# Return the number of positive words (>0) contained in src.
+#
+# Include your name and ID here.
+#Ipek Caglayan
+#2306090
+# Describe how and why you modified the baseline code.
+#Modified version of the function uses loop unrolling. With the help of loop unrolling,
+#I was able to take more than one element per iteration and copy them to the destination.
+#Each copying process includes incrementing the count if copied element is positive.
+#At first, I was taking 4 element to copy per iteration.I was repeating this loop
+#until length became less than  4. When it is less than 4, number of remaining element can be 3, 2, 1 or 0.
+#Function checks the number of remaining elements. If it is not less than 2 it may be 2 or 3.
+#If it is less than 2, there may be one remaining element to copy or none.
+#If there is one, functions copies it to the destination and then halts.
+#If there is none remaining then function halts.
+#With the first function of mine mentioned above, I was reaching avg CPE = 8.08.
+#Then I thought, before applying loop that takes 4 elements, I can write a loop
+#that takes 10 elements. With this approach, I was able to handle long arrays
+#,length of multiple of 10 or greater, with less cycles. Then after loop that takes
+#10 elements halts, I continue with my first function  which includes loop that
+#takes 4 elements. After the first loop, my remaining length for the second loop will
+#be n mod 10. With the last version of my function, avg CPE = 7.77
+#I also used iaddq instruction because it is less costly than doing irmovq first and then addq.
+#I try to avoid using unnecessary jumps. To achieve this, I found a proper way of
+# placing code blocks.
+
+##################################################################
+# Do not modify this portion
+# Function prologue.
+# %rdi = src, %rsi = dst, %rdx = len
+ncopy:
+	##################################################################
+	# You can modify this portion
+	# Loop header
+	xorq %rax, %rax
+	iaddq $-10,%rdx
+	jl apply_for_4 // len<10 so go for 4
+
+loop_for_len_10:
+
+	mrmovq (%rdi), %rcx
+	mrmovq 8(%rdi), %r8
+	mrmovq 16(%rdi), %r9
+	mrmovq 24(%rdi), %r10
+	mrmovq 32(%rdi), %r11
+	mrmovq 40(%rdi), %r12
+	mrmovq 48(%rdi), %r13
+	mrmovq 56(%rdi), %r14
+	rmmovq %rcx, (%rsi)
+	rmmovq %r8, 8(%rsi)
+	rmmovq %r9, 16(%rsi)
+	rmmovq %r10, 24(%rsi)
+	rmmovq %r11, 32(%rsi)
+	rmmovq %r12, 40(%rsi)
+	rmmovq %r13, 48(%rsi)
+	rmmovq %r14, 56(%rsi)
+	andq %rcx,%rcx
+	jle  N1
+	iaddq $1,%rax
+
+N1:
+
+	andq %r8,%r8 //done with r8 in next step use for 9.elem
+	jle N2
+	iaddq $1,%rax
+
+N2:
+  mrmovq 64(%rdi), %r8
+	andq %r9,%r9 // done with r9 in next step use for 10.elem
+	jle N3
+	iaddq $1,%rax
+
+N3:
+  mrmovq 72(%rdi), %r9
+	andq %r10,%r10
+	jle N4
+	iaddq $1,%rax
+
+N4:
+  rmmovq %r8, 64(%rsi)
+  rmmovq %r9, 72(%rsi)
+	andq %r11,%r11
+	jle N5
+	iaddq $1,%rax
+
+N5:
+
+	andq %r12,%r12
+	jle N6
+	iaddq $1,%rax
+
+N6:
+
+	andq %r13,%r13
+	jle N7
+	iaddq $1,%rax
+
+N7:
+	andq %r14,%r14
+	jle N8
+	iaddq $1,%rax
+N8:
+	andq %r8,%r8
+	jle N9
+	iaddq $1,%rax
+N9:
+	andq %r9,%r9
+	jle loop_10_test
+	iaddq $1,%rax
+
+loop_10_test:
+  iaddq $80,%rdi
+  iaddq $80,%rsi
+  iaddq $-10,%rdx
+  jge loop_for_len_10
+
+apply_for_4:
+  //iaddq $10, %rdx
+  //iaddq $-4,%rdx
+  iaddq $6, %rdx
+	jl less_than_4
+
+
+loop_for_len_4:
+  mrmovq (%rdi), %rcx
+  mrmovq 8(%rdi), %r8
+  mrmovq 16(%rdi), %r9
+  mrmovq 24(%rdi), %r10
+  rmmovq %rcx, (%rsi)
+  rmmovq %r8, 8(%rsi)
+  rmmovq %r9, 16(%rsi)
+  rmmovq %r10, 24(%rsi)
+  andq %rcx,%rcx // sign check
+  jle  s1 //sign check
+  iaddq $1,%rax // if >0 count++
+
+s1:
+
+	andq %r8,%r8
+	jle s2
+	iaddq $1,%rax
+
+s2:
+
+	andq %r9,%r9
+	jle s3
+	iaddq $1,%rax
+
+s3:
+
+	andq %r10,%r10
+	jle test_loop // check whether len>=4*k
+	iaddq $1,%rax
+
+test_loop:
+  iaddq $32,%rdi
+  iaddq $32,%rsi
+  iaddq $-4,%rdx
+  jge loop_for_len_4
+
+less_than_4:
+  iaddq $2,%rdx
+  jl less_than_2 // if not less_than2 len>=2 and len<4
+
+len2:
+  mrmovq (%rdi), %rcx
+  mrmovq 8(%rdi), %r8
+  rmmovq %rcx, (%rsi)
+  rmmovq %r8, 8(%rsi)
+  andq %rcx,%rcx
+	jle  s4
+	iaddq $1,%rax
+
+s4:
+  andq %r8,%r8
+  jle left_1
+  iaddq $1,%rax
+
+left_1:
+  iaddq $16,%rdi
+	iaddq $16,%rsi
+	iaddq $-1,%rdx
+  jge last // copy last elem
+  ret // none left
+
+less_than_2:
+  iaddq $1,%rdx
+  jge last
+  ret
+
+last:
+  mrmovq (%rdi), %rcx
+	rmmovq %rcx, (%rsi)
+	andq %rcx,%rcx
+	jle  Done
+	iaddq $1,%rax
+
+
+
+
+##################################################################
+# Do not modify the following section of code
+# Function epilogue.
+Done:
+	ret
+
+##################################################################
+# Keep the following label at the end of your function
+End:
+#/* $end ncopy-ys */

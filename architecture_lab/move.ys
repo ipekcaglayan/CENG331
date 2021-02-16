@@ -1,0 +1,89 @@
+#Ipek Caglayan
+#2306090
+
+.pos 0
+  irmovq stack, %rsp
+  irmovq arrayp3, %rdi
+  irmovq array, %rsi
+  irmovq $5, %rdx
+  call move
+  halt
+
+# an array of 9 elements
+# again, positioned absolutely
+.pos 0x100
+array:
+.quad 0x000000001
+.quad 0x000000020
+.quad 0x000000300
+# a pointer to the fourth element here
+arrayp3:
+.quad 0x000004000
+.quad 0x000050000
+.quad 0x000600000
+.quad 0x007000000
+.quad 0x080000000
+.quad 0x900000000
+
+
+move:
+  rrmovq %rdi, %r8 //dst
+  rrmovq %rsi, %r9 //src
+  rrmovq %rdx, %r10 //len
+  irmovq $0, %rax //checksum=0
+  irmovq $8, %r11 //step=1
+  irmovq $8, %r12 //elem_size
+  irmovq $1, %r13 //for len-- or len++
+  subq %r9, %r8 // src<dst 0<dsr-src jump to wcond if src-dst>=0
+  jle wcond //sonuç 0 veya pozitifse while a atlar
+  irmovq $0, %r14 //ilk cond satisfied ikinciyi check önce elemsize*len hesapla
+
+mult:
+  addq %r12, %r14
+  subq %r13, %r10
+  jg  mult   //r14=elem_size*len
+  rrmovq %r14, %r10 //r10=elem_size*len
+  addq %rsi, %r14 //r14=src+elem_size*len
+  subq %rdi, %r14// dst<r14 jum to while if dst
+  jle wcond //jump olmazsa if içini yapcak
+  subq %r12, %r10 //(len-1)*8=r14-8
+  addq %r10, %rdi // dst+(len-1)*8
+  addq %r10, %rsi  //src+(len-1)*8
+  irmovq $-8, %r11 // step=-1
+  jmp wcond
+loop:
+
+  mrmovq (%rsi), %rcx //*src
+  xorq %rcx, %rax
+  mrmovq (%rsi), %rcx //*src
+  rmmovq %rcx, (%rdi) //*dst=*src
+  addq %r11, %rdi
+  addq %r11, %rsi
+  subq %r13, %rdx
+
+wcond:
+  andq %rdx, %rdx
+  jne loop
+  ret
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.pos 0x300
+stack:

@@ -1,0 +1,57 @@
+#Ipek Caglayan
+#2306090
+
+.pos 0
+  irmovq stack, %rsp
+  irmovq ele0, %rdi
+  call rrev
+  halt
+# A sample five-element linked list
+# Aligned absolutely to make observing
+# differences in the memory layout easier
+.pos 0x100
+ele0:
+.quad 0x0000a
+.quad ele1
+ele1:
+.quad 0x000b0
+.quad ele2
+ele2:
+.quad 0x00c00
+.quad ele3
+ele3:
+.quad 0x0d000
+.quad ele4
+ele4:
+.quad 0xe0000
+.quad 0
+
+rrev:
+  rrmovq %rdi, %rax // if(!head) return head(null)
+  //(!head ||!head->next)
+  andq %rdi, %rdi
+  je exit
+  mrmovq 8(%rdi), %r8 //head->next
+  andq %r8, %r8
+  jne rec
+
+exit:
+  rrmovq %rdi, %rax //return head
+  ret
+rec:
+  pushq %rdi //push stack check after rec end
+  mrmovq 8(%rdi), %rdi //head=head->next
+  call rrev
+  popq %rdi
+  rmmovq %rdi, 24(%rdi) //head->next->next = head
+  irmovq $0, %r9
+  rmmovq %r9, 8(%rdi)
+  ret
+
+
+
+
+
+
+.pos 0x300
+stack:
